@@ -1,5 +1,5 @@
 
-// 1. Express requires these dependencies
+// Express requires these dependencies
 var express = require('express')
   , routes = require('./routes')
   , user = require('./routes/user')
@@ -8,7 +8,7 @@ var express = require('express')
 
 var app = express();
 
-// 2. Configure our application
+// Configure our application
 app.configure(function(){
   app.set('port', process.env.PORT || 3000);
   app.set('views', __dirname + '/views');
@@ -21,40 +21,44 @@ app.configure(function(){
   app.use(express.static(path.join(__dirname, 'public')));
 });
 
-// 3. Configure error handling
+// Configure error handling
 app.configure('development', function(){
   app.use(express.errorHandler());
 });
 
-// 4. Setup Routes
+// Setup Routes
 app.get('/', routes.index);
 app.get('/users', user.list);
 
-// 5. Enable Socket.io
+// Enable Socket.io
 var server = http.createServer(app).listen( app.get('port') );
 var io = require('socket.io').listen( server );
 
-// 6. Send (Emit) an pong event when the server recieves a ping
+// A user connects to the server (opens a socket)
 io.sockets.on('connection', function (socket) {
 
   // (2): The server recieves a ping event
-  // from the browser
+  // from the browser on this socket
   socket.on('ping', function ( data ) {
+  
+    console.log('socket: server recieves ping (2)');
+
+    // (3): Emit a pong event all listening browsers
+    // with the data from the ping event
+    io.sockets.emit( 'pong', data );   
     
-    console.log('socket: server recieved ping (2)');
-
-    // (3): Send a pong event to the browser
-    // Pass the data from the ping event 
-    socket.emit( 'pong', data );   
-
-    console.log('socket: server sent pong (3)');
+    console.log('socket: server sends pong to all (3)');
 
   });
 
   socket.on( 'drawCircle', function( data, session ) {
 
+    console.log( "session " + session + " drew:");
+    console.log( data );
+
+
     socket.broadcast.emit( 'drawCircle', data );
 
-  })
+  });
 
 });
