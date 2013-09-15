@@ -1,6 +1,7 @@
 {
-  "name": "application-name",
-  "version": "0.0.1",
+  "name": "Node-Js-Draw",
+  "subdomain": "Node-Js-Draw",
+  "version": "0.0.1-4",
   "private": true,
   "scripts": {
     "start": "node app"
@@ -9,5 +10,8 @@
     "express": "3.0.x",
     "jade": "*",
     "socket.io": "0.9.x"
+  },
+  "engines": {
+    "node": "0.10.x"
   }
 }

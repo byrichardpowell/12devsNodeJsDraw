@@ -37,28 +37,26 @@ var io = require('socket.io').listen( server );
 // A user connects to the server (opens a socket)
 io.sockets.on('connection', function (socket) {
 
-  // (2): The server recieves a ping event
-  // from the browser on this socket
-  socket.on('ping', function ( data ) {
-  
-    console.log('socket: server recieves ping (2)');
 
-    // (3): Emit a pong event all listening browsers
-    // with the data from the ping event
-    io.sockets.emit( 'pong', data );   
-    
-    console.log('socket: server sends pong to all (3)');
+  // A User starts a path
+  socket.on( 'startPath', function( data, sessionId ) {
+
+    socket.broadcast.emit( 'startPath', data, sessionId );
 
   });
 
-  socket.on( 'drawCircle', function( data, session ) {
+  // A User continues a path
+  socket.on( 'continuePath', function( data, sessionId ) {
 
-    console.log( "session " + session + " drew:");
-    console.log( data );
-
-
-    socket.broadcast.emit( 'drawCircle', data );
+    socket.broadcast.emit( 'continuePath', data, sessionId );
 
   });
+
+  // A user ends a path
+  socket.on( 'endPath', function( data, sessionId ) {
+
+    socket.broadcast.emit( 'endPath', data, sessionId );
+
+  });  
 
 });

@@ -1,92 +1,167 @@
+// -----------
+// Setup
+// -----------
+
 
 // The faster the user moves their mouse
 // the larger the circle will be
-// We dont want it to be larger than this
-tool.maxDistance = 50;
+// We dont want it to be larger/smaller than this
+tool.maxDistance = 2;
+tool.maxDistance = 80;
 
+// Each user has a unique session ID
+// We'll use this to keep track of paths
+var sessionId = io.socket.sessionid;
 
 // Returns an object specifying a semi-random color
-// The color will always have a red value of 0
-// and will be semi-transparent (the alpha value)
 function randomColor() {
   
   return {
-    red: 0,
-    green: Math.random(),
-    blue: Math.random(),
-    alpha: ( Math.random() * 0.25 ) + 0.05
+    hue: Math.random() * 360,
+    saturation: 0.8,
+    brightness: 0.8,
+    alpha: 0.5
   };
 
 }
 
+// An object to keep track of each users paths
+// We'll use session ID's as keys
+paths = {};
 
-// every time the user drags their mouse
-// this function will be executed
+
+
+
+
+// -----------
+// User Events
+// -----------
+
+
+// The user started a path
+function onMouseDown(event) {
+  
+  // Create the new path
+  color = randomColor();
+
+  startPath( event.point, color, sessionId );
+
+  // Inform the backend
+  emit("startPath", {point: event.point, color: color}, sessionId);
+
+}
+
 function onMouseDrag(event) {
 
-  // Take the click/touch position as the centre of our circle
-  var x = event.middlePoint.x;
-  var y = event.middlePoint.y;
-  
-  // The faster the movement, the bigger the circle
-  var radius = event.delta.length / 2;
-  
-  // Generate our random color
-  var color = randomColor();
+  var step        = event.delta / 2;
+  step.angle     += 90; 
+  var top         = event.middlePoint + step;
+  var bottom      = event.middlePoint - step;
 
-  // Draw the circle 
-  drawCircle( x, y, radius, color );
-  
-   // Pass the data for this circle
-  // to a special function for later
-  emitCircle( x, y, radius, color );
+  continuePath( top, bottom, sessionId );
+
+  // Inform the backend
+  emit("continuePath", {top: top, bottom: bottom}, sessionId);
+
+}
+
+function onMouseUp(event) {
+
+  endPath(event.point, sessionId);
+
+  // Inform the backend
+  emit("endPath", {point: event.point}, sessionId);
 
 }
 
 
-function drawCircle( x, y, radius, color ) {
 
-  // Render the circle with Paper.js
-  var circle = new Path.Circle( new Point( x, y ), radius );
-  circle.fillColor = new RgbColor( color.red, color.green, color.blue, color.alpha );
 
-  // Refresh the view, so we always get an update, even if the tab is not in focus
+
+
+// -----------------
+// Drawing functions
+// Use to draw multiple users paths
+// -----------------
+
+
+function startPath( point, color, sessionId ) {
+
+  paths[sessionId] = new Path();
+  paths[sessionId].fillColor = color;
+  paths[sessionId].add(point);
+
+}
+
+function continuePath(top, bottom, sessionId) {
+
+  var path    = paths[sessionId];
+  
+  path.add(top);
+  path.insert(0, bottom);
+
+}
+
+function endPath(point, sessionId) {
+
+  var path = paths[sessionId];
+
+  path.add(point);
+  path.closed = true;
+  path.smooth();
+
+  delete paths[sessionId]
+
+}
+
+
+
+
+
+
+// -----------------
+// Emit
+// Use to inform the server of user events
+// -----------------
+
+
+function emit(eventName, data) {
+
+  io.emit(eventName, data, sessionId);
+
+}
+
+
+
+
+
+
+
+// -----------------
+// On
+// Draw other users paths
+// -----------------
+
+
+
+io.on( 'startPath', function( data, sessionId ) {
+  
+  startPath(data.point, data.color, sessionId);
+  
+})
+
+
+io.on( 'continuePath', function( data, sessionId ) {
+
+  continuePath(data.top, data.bottom, sessionId);
   view.draw();
-} 
   
-
-// This function sends the data for a circle to the server
-// so that the server can broadcast it to every other user
-function emitCircle( x, y, radius, color ) {
-
-  // Each Socket.IO connection has a unique session id
-  var sessionId = io.socket.sessionid;
-  
-  // An object to describe the circle's draw data
-  var data = {
-    x: x,
-    y: y,
-    radius: radius,
-    color: color
-  };
-
-  // send a 'drawCircle' event with data and sessionId to the server
-  io.emit( 'drawCircle', data, sessionId )
-
-  // Lets have a look at the data we're sending
-  console.log( data )
-
-}
+})
 
 
-// Listen for 'drawCircle' events
-// created by other users
-io.on( 'drawCircle', function( data ) {
+io.on( 'endPath', function( data, sessionId ) {
 
-  console.log( 'drawCircle event recieved:', data );
-
-  // Draw the circle using the data sent
-  // from another user
-  drawCircle( data.x, data.y, data.radius, data.color );
+  endPath(data.point, sessionId);
+  view.draw();
   
 })
